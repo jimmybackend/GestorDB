@@ -5,6 +5,7 @@ header('Cache-Control: no-store');
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
+require_once __DIR__.'/RelationNavigator.php';
 $identity=GestorAccess::requireIdentity();
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
@@ -18,6 +19,12 @@ $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $pk=$meta['pk']??[];
 $error='';
 $rows=[];
+$navigator=new RelationNavigator($db_connection,$schema);
+$relationScope=null;
+if(isset($_GET['relation'])){
+ if(!$meta||!is_string($_GET['relation'])||$action!=='see'){http_response_code(400);exit('Invalid relationship selection');}
+ try{$relationScope=$navigator->scope($table,$_GET['relation'],$identity);}catch(Throwable $ex){http_response_code(404);exit('Related records unavailable');}
+}
 if (($identity['mode']??'')==='user') {
     $schema=array_filter($schema,static fn($item)=>GestorAccess::ownerColumn($item,(string)$identity['table'])!==null);
     if($table!==''&&!isset($schema[$table])){http_response_code(403);exit('Tabla no autorizada');}
@@ -34,6 +41,14 @@ if ($meta && $action==='see') {
             $stmt=$db_connection->prepare($sql);
             $stmt->bind_param('s',$identity['id']);
             $stmt->execute();
+            $result=$stmt->get_result();
+        }elseif($relationScope!==null){
+            $filters=$relationScope['filters'];
+            $sql.=' WHERE '.implode(' AND ',array_map(static fn($name)=>$quote($name).'=?',array_keys($filters))).' LIMIT 100';
+            $stmt=$db_connection->prepare($sql);
+            $parameters=array_values($filters);
+            $types=str_repeat('s',count($parameters));
+            $stmt->bind_param($types,...$parameters);$stmt->execute();
             $result=$stmt->get_result();
         }else{$result=$db_connection->query($sql.' LIMIT 100');}
         $rows=$result->fetch_all(MYSQLI_ASSOC);
@@ -87,9 +102,17 @@ if ($meta && $action==='see') {
 <?php foreach($meta['parents'] as $parent): ?><p class="rel">Depende de <strong><?= $e($parent['table']) ?></strong> mediante <?= $e(implode(', ',array_keys($parent['mapping']))) ?></p><?php endforeach; ?>
 <?php if($meta['cycle']):?><p class="warning">Se detectó un ciclo de relaciones; el nivel es orientativo.</p><?php endif; ?>
 <?php if($error):?><p class="warning"><?=$e($error)?></p><?php endif; ?>
+<?php if($relationScope!==null):?><p class="rel">Mostrando detalles de <?= $e($relationScope['parent']) ?>. <a href="?table=<?=rawurlencode($table)?>">Ver todos los registros</a></p><?php endif; ?>
 <?php if($action==='see'): ?>
-<div class="scroll"><table><thead><tr><?php foreach($meta['columns'] as $name=>$col):?><th><?=$e($name)?></th><?php endforeach;?></tr></thead><tbody>
-<?php foreach($rows as $row):?><tr><?php foreach($meta['columns'] as $name=>$col):?><td><?=$e($row[$name]??'')?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table></div>
+<div class="scroll"><table><thead><tr><?php foreach($meta['columns'] as $name=>$col):?><th><?=$e($name)?></th><?php endforeach;?><?php if(($identity['mode']??'')==='admin'):?><th>Detalles relacionados</th><?php endif;?></tr></thead><tbody>
+<?php foreach($rows as $row):?><tr><?php foreach($meta['columns'] as $name=>$col):?><td><?=$e($row[$name]??'')?></td><?php endforeach;?>
+<?php if(($identity['mode']??'')==='admin'): ?><td>
+<?php foreach($navigator->children($table) as $child): ?>
+<?php if($pk && count(array_intersect($pk,array_keys($row)))===count($pk)):
+$params=['table'=>$child['table'],'relation'=>$child['constraint'],'parent_pk'=>array_intersect_key($row,array_flip($pk))]; ?>
+<a href="dashboard.php?<?=$e(http_build_query($params))?>"><?=$e($child['table'])?> · <?=$e($child['constraint'])?></a>
+<?php endif;endforeach; ?>
+</td><?php endif;?></tr><?php endforeach;?></tbody></table></div>
 <p>Hasta 100 registros por consulta.</p>
 <?php else: ?>
 <?php if(in_array($action,['edit','delete'],true)&&count($pk)<1):?>
