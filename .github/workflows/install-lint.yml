@@ -32,3 +32,4 @@ jobs:
           php -l schema-keys-process.php
           php -l RelationNavigator.php
           php -l OwnershipPolicy.php
+          php tests/ownership-policy.php
