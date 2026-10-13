@@ -4,7 +4,7 @@ session_start();
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
 $setupToken = getenv('GESTORDB_SETUP_TOKEN');
-$configFile = dirname(__DIR__) . '/../gestordb-config.php';
+$configFile = dirname(__DIR__, 2) . '/gestordb-config.php';
 $installed = is_file($configFile);
 if (!is_string($setupToken) || strlen($setupToken) < 24) {
     http_response_code(503);
