@@ -9,8 +9,7 @@ require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 $identity=GestorAccess::requireIdentity();
-$isUser=($identity['mode']??'')==='user';
-if(!$isUser&&($identity['mode']??'')!=='admin'){http_response_code(403);exit('Acceso no autorizado');}
+if(($identity['mode']??'')!=='admin'){http_response_code(403);exit('CRUD de usuarios no autorizado');}
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 $table=$_POST['table']??null;
 $action=$_POST['action']??null;
