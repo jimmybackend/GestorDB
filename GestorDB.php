@@ -2222,6 +2222,15 @@ echo "</form>";
         return (new GestorKeys($this->conexion))->choices((string)$tabla,(string)$restriccion,(int)$limite);
     }
 
+    /** Create a form input from actual MySQL column metadata. */
+    public function generarControlCampo(string $tabla, string $campo, bool $insertar = true): string {
+        require_once __DIR__.'/GestorKeys.php';
+        require_once __DIR__.'/GestorFieldRenderer.php';
+        $metadata=(new GestorKeys($this->conexion))->describe($tabla);
+        if(!isset($metadata['columns'][$campo]))throw new InvalidArgumentException('Campo inexistente');
+        return GestorFieldRenderer::render($campo,$metadata['columns'][$campo],$insertar);
+    }
+
     // Destructor de la clase
     public function __destruct() {
         // Cerrar conexión a la base de datos

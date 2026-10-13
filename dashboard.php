@@ -6,6 +6,7 @@ require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 require_once __DIR__.'/RelationNavigator.php';
+require_once __DIR__.'/GestorFieldRenderer.php';
 $identity=GestorAccess::requireIdentity();
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
@@ -130,8 +131,7 @@ $params=['table'=>$child['table'],'relation'=>$child['constraint'],'parent_pk'=>
 <?php if($action!=='delete'): ?>
 <?php foreach($meta['columns'] as $name=>$col):
 if(str_contains(strtolower($col['EXTRA']),'auto_increment'))continue; ?>
-<label><?=$e($name)?> <small><?=$e($col['DATA_TYPE'])?><?=$col['IS_NULLABLE']==='YES'?' · permite NULL':''?></small>
-<input name="field[<?=$e($name)?>]" placeholder="Valor (vacío = omitir en alta)"></label>
+<?=GestorFieldRenderer::render($name,$col,$action==='add')?>
 <?php endforeach;?>
 <?php else: ?><p class="warning">Se eliminará únicamente el registro con la clave primaria indicada. Esta operación es irreversible.</p><?php endif;?>
 <button type="submit"><?= $e(match($action){'add'=>'Insertar','edit'=>'Actualizar','delete'=>'Eliminar'}) ?></button>
