@@ -38,6 +38,13 @@ final class GestorAccess {
         $stmt=$db->prepare("SELECT `id`,`password` FROM {$table} WHERE `email`=? LIMIT 2");
         $stmt->bind_param('s',$email); $stmt->execute(); $rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
         if(count($rows)!==1 || !password_verify($password,(string)$rows[0]['password']))return false;
+        if ($map['hasStatus']) {
+            $check=$db->prepare("SELECT 1 FROM {$table} WHERE `id`=? AND `userstatus`='Activo' LIMIT 1");
+            $uid=(string)$rows[0]['id'];
+            $check->bind_param('s',$uid); $check->execute();
+            $active=$check->get_result()->fetch_row()!==null; $check->close();
+            if (!$active) return false;
+        }
         session_regenerate_id(true);
         $_SESSION['gestordb_identity']=['mode'=>'user','id'=>(string)$rows[0]['id'],'table'=>$map['table']];
         return true;
