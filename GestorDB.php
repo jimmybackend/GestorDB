@@ -2207,6 +2207,21 @@ echo "</form>";
         // Aquí podrías añadir más lógica, como redireccionar a otra página o mostrar un mensaje de éxito
     }
 
+    /**
+     * Primary keys, FK mappings and legacy relational naming hints for a table.
+     * The caller must separately authorize access to the requested table/rows.
+     */
+    public function obtenerLlaves($tabla): array {
+        require_once __DIR__.'/GestorKeys.php';
+        return (new GestorKeys($this->conexion))->describe((string)$tabla);
+    }
+
+    /** Resolve declared FK values without guessing the referenced primary key's name. */
+    public function obtenerOpcionesRelacion($tabla, $restriccion, $limite = 100): array {
+        require_once __DIR__.'/GestorKeys.php';
+        return (new GestorKeys($this->conexion))->choices((string)$tabla,(string)$restriccion,(int)$limite);
+    }
+
     // Destructor de la clase
     public function __destruct() {
         // Cerrar conexión a la base de datos
