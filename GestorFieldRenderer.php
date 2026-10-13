@@ -18,7 +18,7 @@ final class GestorFieldRenderer {
         $required=$insert && ($meta['IS_NULLABLE']??'YES')==='NO' && ($meta['COLUMN_DEFAULT']??null)===null;
         $attrs=' name="field['.$escaped.']" id="field_'.$escaped.'" class="form-control"'.($required?' required':'');
         $value=' value="'.self::esc($default).'"';
-        if($type==='enum'||$type==='set'){
+        if($type==='enum'){
             preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/",$full,$match);
             $values=array_map(static fn($v)=>str_replace("\\'","'",$v),$match[1]);
             if(!$values)return $label.'<input type="text"'.$attrs.$value.'></label>';
