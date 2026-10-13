@@ -25,3 +25,4 @@ jobs:
           php -l main05.php
           php -l procesar.php
           php -l index.php
+          php -l GestorAccess.php
