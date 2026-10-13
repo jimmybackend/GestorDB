@@ -15,7 +15,7 @@ final class SchemaHierarchy
             $tables[$name] = ['name' => $name, 'pk' => [], 'parents' => [], 'columns' => [], 'level' => null, 'cycle' => false];
         }
         $result->free();
-        $result = $this->db->query("SELECT TABLE_NAME,COLUMN_NAME,COLUMN_KEY,DATA_TYPE,IS_NULLABLE,EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME,ORDINAL_POSITION");
+        $result = $this->db->query("SELECT TABLE_NAME,COLUMN_NAME,COLUMN_KEY,DATA_TYPE,COLUMN_TYPE,CHARACTER_MAXIMUM_LENGTH,NUMERIC_PRECISION,NUMERIC_SCALE,COLUMN_DEFAULT,IS_NULLABLE,EXTRA FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() ORDER BY TABLE_NAME,ORDINAL_POSITION");
         while ($row = $result->fetch_assoc()) {
             $t = $row['TABLE_NAME'];
             if (!isset($tables[$t])) continue;
