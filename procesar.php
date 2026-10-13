@@ -7,6 +7,9 @@ $csrf=$_POST['csrf']??null;
 if (!is_string($csrf)||!isset($_SESSION['gestordb_csrf'])||!hash_equals($_SESSION['gestordb_csrf'],$csrf)) {http_response_code(403);exit('Invalid session');}
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
+require_once __DIR__.'/GestorAccess.php';
+$identity=GestorAccess::requireIdentity();
+if(($identity['mode']??'')!=='admin'){http_response_code(403);exit('CRUD de usuarios no autorizado');}
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 $table=$_POST['table']??null;
 $action=$_POST['action']??null;
