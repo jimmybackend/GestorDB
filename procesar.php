@@ -8,6 +8,7 @@ if (!is_string($csrf)||!isset($_SESSION['gestordb_csrf'])||!hash_equals($_SESSIO
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
+require_once __DIR__.'/GestorFieldCodec.php';
 $identity=GestorAccess::requireIdentity();
 if(($identity['mode']??'')!=='admin'){http_response_code(403);exit('CRUD de usuarios no autorizado');}
 $schema=(new SchemaHierarchy($db_connection))->inspect();
@@ -19,11 +20,16 @@ $meta=$schema[$table];
 $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $allowed=array_keys($meta['columns']);
 $values=[];
+$expressions=[];
 foreach ($fields as $key=>$value) {
-    if (!is_string($key)||!in_array($key,$allowed,true)||!is_string($value)) {http_response_code(400);exit('Invalid field');}
+    if (!is_string($key)||!in_array($key,$allowed,true)||!(is_string($value)||is_array($value))) {http_response_code(400);exit('Invalid field');}
     if (str_contains(strtolower($meta['columns'][$key]['EXTRA']),'auto_increment'))continue;
     // Omit empty fields rather than overwriting existing values or defaults.
-    if ($value!=='') $values[$key]=$value;
+    if ($value!=='' && $value!==[]) {
+        $decoded=GestorFieldCodec::decode($meta['columns'][$key],$value);
+        $values[$key]=$decoded['value'];
+        $expressions[$key]=$decoded['sql'];
+    }
 }
 $pk=$meta['pk'];
 $keys=$_POST['pk']??[];
