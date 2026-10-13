@@ -43,14 +43,14 @@ try {
         $parameters=array_values($values);
     } elseif ($action==='edit') {
         if (!$values) throw new RuntimeException('No values supplied');
-        unset($values[$pk[0]]);
+        foreach($pk as $key) unset($values[$key]);
         if (!$values) throw new RuntimeException('No editable fields supplied');
         $names=array_keys($values);
-        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$quote($pk[0]).'=?';
-        $parameters=[...array_values($values),$_POST['pk_value']];
+        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$where;
+        $parameters=[...array_values($values),...$keyParameters];
     } else {
-        $sql='DELETE FROM '.$quote($table).' WHERE '.$quote($pk[0]).'=?';
-        $parameters=[$_POST['pk_value']];
+        $sql='DELETE FROM '.$quote($table).' WHERE '.$where;
+        $parameters=$keyParameters;
     }
     $stmt=$db_connection->prepare($sql);
     $types=str_repeat('s',count($parameters));
