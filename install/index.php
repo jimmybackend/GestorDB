@@ -3,9 +3,11 @@ declare(strict_types=1);
 session_start();
 header('Cache-Control: no-store');
 header('X-Content-Type-Options: nosniff');
+header('X-Frame-Options: DENY');
+header('Referrer-Policy: no-referrer');
 $setupToken = getenv('GESTORDB_SETUP_TOKEN');
 $configFile = dirname(__DIR__, 2) . '/gestordb-config.php';
-$installed = is_file($configFile);
+$installed = is_file($configFile) || (getenv('GESTORDB_DB_USER') !== false && getenv('GESTORDB_DB_NAME') !== false);
 if (!is_string($setupToken) || strlen($setupToken) < 24) {
     http_response_code(503);
     exit('Set GESTORDB_SETUP_TOKEN (minimum 24 characters) in the PHP runtime to enable setup.');
