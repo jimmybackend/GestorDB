@@ -11,7 +11,7 @@ final class GestorAccess {
     }
     public static function identity(): ?array {
         if (isset($_SESSION['gestordb_identity']) && is_array($_SESSION['gestordb_identity'])) return $_SESSION['gestordb_identity'];
-        if (self::mode() === 'admin' && self::adminTrusted()) return ['mode'=>'admin'];
+        if (in_array(self::mode(), ['admin','mixed'],true) && self::adminTrusted()) return ['mode'=>'admin'];
         return null;
     }
     public static function requireIdentity(): array {
@@ -28,7 +28,7 @@ final class GestorAccess {
         foreach($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $cols[]=$r['COLUMN_NAME'];
         $stmt->close();
         foreach(['id','email','password'] as $key) if(!in_array($key,$cols,true))return null;
-        return ['table'=>$table,'id'=>'id','email'=>'email','password'=>'password'];
+        return ['table'=>$table,'id'=>'id','email'=>'email','password'=>'password','hasStatus'=>in_array('userstatus',$cols,true)];
     }
     public static function login(mysqli $db,string $email,string $password): bool {
         if (strlen($email)>255 || $email==='' || $password==='') return false;
