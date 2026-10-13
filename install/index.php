@@ -49,6 +49,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_options($db, MYSQLI_OPT_CONNECT_TIMEOUT, 5);
                 mysqli_real_connect($db, $host, $user, $password, $database, (int)$port);
                 mysqli_set_charset($db, 'utf8mb4');
+                if ($accessMode === 'users' || $accessMode === 'mixed') {
+                    $verify = $db->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
+                    $verify->bind_param('s', $authTable);
+                    $verify->execute();
+                    $authColumns = array_column($verify->get_result()->fetch_all(MYSQLI_ASSOC), 'COLUMN_NAME');
+                    $verify->close();
+                    foreach (['id', 'email', 'password'] as $column) {
+                        if (!in_array($column, $authColumns, true)) {
+                            throw new RuntimeException('Chosen authentication table is missing a required column');
+                        }
+                    }
+                }
                 mysqli_close($db);
                 $settings = [
                     'host' => $host, 'user' => $user, 'password' => $password,
