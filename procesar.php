@@ -26,8 +26,15 @@ foreach ($fields as $key=>$value) {
     if ($value!=='') $values[$key]=$value;
 }
 $pk=$meta['pk'];
-if ($action!=='add' && count($pk)<1) {http_response_code(400);exit('A simple primary key is required');}
-if ($action!=='add' && (!isset($_POST['pk_value'])||!is_string($_POST['pk_value'])||$_POST['pk_value']==='')) {http_response_code(400);exit('Missing primary key value');}
+$keys=$_POST['pk']??[];
+if($action!=='add'){
+ if(!$pk||!is_array($keys)||count($keys)!==count($pk)){http_response_code(400);exit('Invalid primary key');}
+ foreach($pk as $key){
+  if(!isset($keys[$key])||!is_string($keys[$key])||$keys[$key]===''){http_response_code(400);exit('Incomplete primary key');}
+ }
+}
+$where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
+$keyParameters=array_map(static fn($key)=>$keys[$key],$pk);
 try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
