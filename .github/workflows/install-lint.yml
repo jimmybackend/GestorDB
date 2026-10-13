@@ -19,6 +19,7 @@ jobs:
           php -l install/index.php
           php -l db.php
           php -l GestorDB.php
+          php -l GestorKeys.php
           php -l dashboard.php
           php -l dashboard-legacy.php
           php -l SchemaHierarchy.php
