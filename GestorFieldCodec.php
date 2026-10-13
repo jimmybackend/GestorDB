@@ -32,7 +32,7 @@ final class GestorFieldCodec {
    $bits=(int)($meta['NUMERIC_PRECISION']??0);
    if($bits===0&&preg_match('/bit\((\d+)\)/i',(string)$meta['COLUMN_TYPE'],$m))$bits=(int)$m[1];
    if($bits>0&&strlen($input)>$bits)throw new InvalidArgumentException('Too many bits');
-   return ['sql'=>'b'."'".'VALUE'."'".'','value'=>$input,'bit'=>true];
+   return ['sql'=>'CAST(CONV(?,2,10) AS UNSIGNED)','value'=>$input];
   }
   if($kind==='vector'){
    $v=json_decode($input,true,512,JSON_THROW_ON_ERROR);
