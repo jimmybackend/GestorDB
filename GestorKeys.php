@@ -39,7 +39,7 @@ final class GestorKeys {
         if(!$cols)throw new InvalidArgumentException('No referenced columns');
         foreach($cols as $col)if(!isset($schema[$parent]['columns'][$col]))throw new InvalidArgumentException('Unknown referenced column');
         $limit=max(1,min($limit,100));
-        $sql='SELECT '.implode(',',array_map($this->quote(...),$cols)).' FROM '.$this->quote($parent).' LIMIT '.$limit;
+        $sql='SELECT '.implode(',',array_map(fn($col)=>$this->quote($col),$cols)).' FROM '.$this->quote($parent).' LIMIT '.$limit;
         $result=$this->db->query($sql);
         $rows=$result->fetch_all(MYSQLI_ASSOC);$result->free();
         return $rows;
