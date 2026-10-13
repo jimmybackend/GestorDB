@@ -4,6 +4,8 @@ session_start();
 header('Cache-Control: no-store');
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
+require_once __DIR__.'/GestorAccess.php';
+$identity=GestorAccess::requireIdentity();
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
 $e=static fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
@@ -16,11 +18,24 @@ $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $pk=$meta['pk']??[];
 $error='';
 $rows=[];
+if (($identity['mode']??'')==='user') {
+    $schema=array_filter($schema,static fn($item)=>GestorAccess::ownerColumn($item,(string)$identity['table'])!==null);
+    if($table!==''&&!isset($schema[$table])){http_response_code(403);exit('Tabla no autorizada');}
+    $meta=$table!==''?$schema[$table]:null;
+    if($action!=='see'){http_response_code(403);exit('Edición de usuario no habilitada');}
+}
 if ($meta && $action==='see') {
     try {
         $cols=array_keys($meta['columns']);
-        $sql='SELECT * FROM '.$quote($table).' LIMIT 100';
-        $result=$db_connection->query($sql);
+        $sql='SELECT * FROM '.$quote($table);
+        if(($identity['mode']??'')==='user') {
+            $owner=GestorAccess::ownerColumn($meta,(string)$identity['table']);
+            $sql.=' WHERE '.$quote($owner).'=? LIMIT 100';
+            $stmt=$db_connection->prepare($sql);
+            $stmt->bind_param('s',$identity['id']);
+            $stmt->execute();
+            $result=$stmt->get_result();
+        }else{$result=$db_connection->query($sql.' LIMIT 100');}
         $rows=$result->fetch_all(MYSQLI_ASSOC);
         $result->free();
     } catch(Throwable $ex) {error_log($ex->getMessage());$error='No se pudo consultar la tabla.';}
@@ -36,8 +51,8 @@ if ($meta && $action==='see') {
 <?php else: ?>
 <section class="panel"><div class="toolbar">
 <a href="?table=<?=rawurlencode($table)?>&action=see">Registros</a>
-<a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a>
-<?php if(count($pk)===1): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
+<?php if(($identity['mode']??'')==='admin'): ?><a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a><?php endif; ?>
+<?php if(($identity['mode']??'')==='admin' && count($pk)===1): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
 <a href="?table=<?=rawurlencode($table)?>&action=delete">Eliminar</a><?php endif; ?>
 </div><p>Nivel <?= $e($meta['level']) ?> · Clave primaria: <?= $e(implode(', ', $pk)?:'sin PK') ?> · <?= count($meta['parents']) ?> relación(es) detectada(s)</p>
 <?php foreach($meta['parents'] as $parent): ?><p class="rel">Depende de <strong><?= $e($parent['table']) ?></strong> mediante <?= $e(implode(', ',array_keys($parent['mapping']))) ?></p><?php endforeach; ?>
