@@ -1,0 +1,56 @@
+<?php
+declare(strict_types=1);
+final class GestorAccess {
+    public static function mode(): string {
+        $mode = getenv('GESTORDB_ACCESS_MODE') ?: 'users';
+        return in_array($mode, ['admin','users','mixed'],true) ? $mode : 'users';
+    }
+    public static function adminTrusted(): bool {
+        $allow = array_filter(array_map('trim',explode(',',getenv('GESTORDB_ADMIN_ALLOWED_IPS') ?: '127.0.0.1,::1')));
+        return in_array($_SERVER['REMOTE_ADDR'] ?? '', $allow, true);
+    }
+    public static function identity(): ?array {
+        if (isset($_SESSION['gestordb_identity']) && is_array($_SESSION['gestordb_identity'])) return $_SESSION['gestordb_identity'];
+        if (self::mode() === 'admin' && self::adminTrusted()) return ['mode'=>'admin'];
+        return null;
+    }
+    public static function requireIdentity(): array {
+        $id = self::identity();
+        if (!$id) { header('Location: index.php',true,303); exit; }
+        return $id;
+    }
+    public static function usersTable(mysqli $db): ?array {
+        // Never select credential-like tables by names alone. An explicit table can be configured.
+        $table = getenv('GESTORDB_AUTH_TABLE') ?: 'Users';
+        $cols = [];
+        $stmt=$db->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
+        $stmt->bind_param('s',$table); $stmt->execute();
+        foreach($stmt->get_result()->fetch_all(MYSQLI_ASSOC) as $r) $cols[]=$r['COLUMN_NAME'];
+        $stmt->close();
+        foreach(['id','email','password'] as $key) if(!in_array($key,$cols,true))return null;
+        return ['table'=>$table,'id'=>'id','email'=>'email','password'=>'password'];
+    }
+    public static function login(mysqli $db,string $email,string $password): bool {
+        if (strlen($email)>255 || $email==='' || $password==='') return false;
+        $map=self::usersTable($db);
+        if (!$map) return false;
+        $table='`'.str_replace('`','``',$map['table']).'`';
+        $stmt=$db->prepare("SELECT `id`,`password` FROM {$table} WHERE `email`=? LIMIT 2");
+        $stmt->bind_param('s',$email); $stmt->execute(); $rows=$stmt->get_result()->fetch_all(MYSQLI_ASSOC);$stmt->close();
+        if(count($rows)!==1 || !password_verify($password,(string)$rows[0]['password']))return false;
+        session_regenerate_id(true);
+        $_SESSION['gestordb_identity']=['mode'=>'user','id'=>(string)$rows[0]['id'],'table'=>$map['table']];
+        return true;
+    }
+    public static function ownerColumn(array $meta,string $userTable): ?string {
+        // Only a *declared foreign key* to the login table establishes ownership.
+        $matches=[];
+        foreach($meta['parents'] as $relationship) {
+            if($relationship['table']!==$userTable || count($relationship['mapping'])!==1)continue;
+            foreach($relationship['mapping'] as $local=>$remote) {
+                if($remote==='id')$matches[]=$local;
+            }
+        }
+        return count($matches)===1 ? $matches[0] : null;
+    }
+}
