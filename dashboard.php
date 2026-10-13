@@ -1,436 +1,72 @@
-<?php include 'main00.php'; ?>
-<!DOCTYPE html>
-<html lang="ES">
-<head>
-  <meta charset="utf-8" />
-  <title>Tienda en Línea | Esforzados</title>
-  <meta name="description" content="Plataforma integral de gestión para tiendas en línea. Optimiza ventas, inventario y relaciones con clientes. ¡Impulsa tu negocio hoy!" />
-<?php include 'main0.php'; ?>
-</head>
-
-<body class="layout-column">
-  <div id="main-page">
-<?php include 'main01.php'; ?>
-    <div id="main" class="layout-row flex">
-<?php include 'main05.php'; ?>
-      <div id="content" class="flex animate fadeInLeft">
 <?php
-if ($_SERVER["REQUEST_METHOD"] == "GET") {
-    if (isset($_GET['f'])) {
-        $valor_f = $_GET['f'];
-        $partes = explode('-', $valor_f);
-        if (count($partes) == 2) {
-            $tabla1 = $partes[0];
-            $accion1 = $partes[1];
-           
-            if($accion1=='see')
-            echo '<h2>Ver '.$tabla1.'</h2>';
-            if($accion1=='edit')
-            echo '<h2>Actualizar '.$tabla1.'</h2>';
-            if($accion1=='search')
-            echo '<h2>Buscar '.$tabla1.'</h2>';
-            if($accion1=='add')
-            echo '<h2>Agregar '.$tabla1.'</h2>';
-            if($accion1=='delete')
-            echo '<h2>Eliminar '.$tabla1.'</h2>';
-             if($accion1=='seeConsulta')
-            echo '<h2>Reportes</h2>';
-        }
-    }
+declare(strict_types=1);
+session_start();
+header('Cache-Control: no-store');
+require_once __DIR__.'/db.php';
+require_once __DIR__.'/SchemaHierarchy.php';
+$schema=(new SchemaHierarchy($db_connection))->inspect();
+if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
+$e=static fn($s)=>htmlspecialchars((string)$s,ENT_QUOTES|ENT_SUBSTITUTE,'UTF-8');
+$table=(string)($_GET['table']??'');
+if ($table!==''&&!isset($schema[$table])) {http_response_code(404);exit('Tabla no encontrada');}
+$action=(string)($_GET['action']??'see');
+if (!in_array($action,['see','add','edit','delete'],true)) $action='see';
+$meta=$table!==''?$schema[$table]:null;
+$quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
+$pk=$meta['pk']??[];
+$error='';
+$rows=[];
+if ($meta && $action==='see') {
+    try {
+        $cols=array_keys($meta['columns']);
+        $sql='SELECT * FROM '.$quote($table).' LIMIT 100';
+        $result=$db_connection->query($sql);
+        $rows=$result->fetch_all(MYSQLI_ASSOC);
+        $result->free();
+    } catch(Throwable $ex) {error_log($ex->getMessage());$error='No se pudo consultar la tabla.';}
 }
 ?>
-        <div class="flex">
-          <div class="padding">
-              <div class="card-body">
-                 
-<?php
-if ($_SERVER["REQUEST_METHOD"] == "GET") {
-    if (isset($_GET['f'])) {
-        $valor_f = $_GET['f'];
-        $partes = explode('-', $valor_f);
-        if($valor_f=='dashboard'){
-            echo '<div class="d-flex flex-column flex">
-  <div>
-    <div class="p-3 p-md-5">
-      <div class="card p-0 col-lg-8 offset-lg-2">
-          <div class="row no-gutters">
-            <div class="col-md-6 bg-success r-l" style="">
-              <div class="p-4 d-flex flex-column h-100">
-                <h4 class="mb-3 text-white">Plataforma integral de gestión para tiendas en línea.</h4>
-                <div class="text-fade">Optimiza ventas, inventario y relaciones con clientes.</div>
-                <div class="text-fade">¡Impulsa tu negocio hoy!</div>
-                
-                <div class="d-flex flex align-items-center justify-content-center">
-                	<div class="animate fadeIn"><br> <br> 
-                	    <img src="assets/img/logo/tiendaenlinea.png" width="202px" alt=""> 
-                	    <br> 
-                	 </div>
-                </div>
-                <div class="text-right text-inherit"><a href="https://esforzados.com/projects.php" class="text-fade">Acerca de</a></div>
-              </div>
-            </div>
-           
-          </div>
-      </div>
-    </div>
-  </div>
-</div>';
-       
-        }
-
-        if (count($partes) == 2) {
-            $tabla = $partes[0];
-            $accion = $partes[1];
-
-            include 'GestorDB.php';
-            $gestorBD = new GestorDB();
-
-            switch ($accion) {
-                case 'see':
-                     $gestorBD->generarVistaTabla_($tabla);
-                    if($tabla == 'Productos' || $tabla == 'Pedidos'  || $tabla == 'Compras' || $tabla == 'Producciones' || $tabla == 'SupportTickets' ){   
-                    echo '<div class="col-12 mb-3 d-flex">
-                <a class="text-primary mr-3 animation-icon d-flex" data-toggle="modal" data-target="#import-modal" id="import-start">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/installing-updates/installing-updates.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/installing-updates/installing-updates.gif" class="play" alt="">
-                  </div>
-                  Import CSV
-                </a>
-                <a href="javascript:void(0);" onclick="window.open(\'exportcsv.php?f='.$tabla1.'\')" class="text-primary mr-3 animation-icon d-flex">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.gif" class="play" alt="">
-                  </div>
-                  Exportar CSV
-                </a>
-                <a href="javascript:void(0);" onclick="window.open(\'imprimirpdf.php?f='.$tabla1.'\')" class="text-primary animation-icon d-flex d-flex align-items-center">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/print/print.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/print/print.gif" class="play" alt="">
-                  </div>
-                  Imprimir PDF
-                </a>
-              </div>';
-                    }
-                   
-                    break;
-                case 'seedetails':
-                    
-                    $sql = $gestorBD->generarVistaTabla_con_Detalles($tabla);
-                    if($tabla == 'Productos' || $tabla == 'Pedidos'  || $tabla == 'Compras' || $tabla == 'Producciones' || $tabla == 'SupportTickets' ){   
-                echo '<div class="col-12 mb-3 d-flex">
-                
-                <a href="javascript:void(0);" onclick="window.open(\'exportdetailscsv.php?f='.$tabla1.'&sql='.$sql.'\')" class="text-primary mr-3 animation-icon d-flex">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.gif" class="play" alt="">
-                  </div>
-                  Exportar CSV
-                </a>
-                <a href="javascript:void(0);" onclick="window.open(\'imprimirdetailspdf.php?f='.$tabla1.'&sql='.$sql.'\')" class="text-primary animation-icon d-flex d-flex align-items-center">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/print/print.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/print/print.gif" class="play" alt="">
-                  </div>
-                  Imprimir PDF
-                </a>
-              </div>';
-                    }
-                    break; 
-                case 'seedetailsProductos':
-                    $sql = $gestorBD->generarVistaTabla_con_Detalles_Productos($tabla);
-                    if($tabla == 'Productos' || $tabla == 'Pedidos'  || $tabla == 'Compras' || $tabla == 'Producciones' || $tabla == 'SupportTickets' ){   
-                echo '<div class="col-12 mb-3 d-flex">
-                
-                <a href="javascript:void(0);" onclick="window.open(\'exportdetailsProductoscsv.php?f='.$tabla1.'&sql='.$sql.'\')" class="text-primary mr-3 animation-icon d-flex">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.gif" class="play" alt="">
-                  </div>
-                  Exportar CSV
-                </a>
-                <a href="javascript:void(0);" onclick="window.open(\'imprimirdetailsProductospdf.php?f='.$tabla1.'&sql='.$sql.'\')" class="text-primary animation-icon d-flex d-flex align-items-center">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/print/print.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/print/print.gif" class="play" alt="">
-                  </div>
-                  Imprimir PDF
-                </a>
-              </div>';
-                    }
-                    
-                    break;
-                case 'seeConsulta':
-                    $gestorBD->generarVistaTabla_Consultas($tabla);
-                    break;    
-                case 'add':
-                    echo '<div class="col-12 d-flex justify-content-between"><h4>Formulario para Agregar</h4></div> <div class="col-6">'; 
-                    $gestorBD->generarFormularioAgregar($tabla);
-                    echo '</div>';
-                    break;
-                case 'edit':
-                    //$gestorBD->generarVistaTabla_($tabla);
-                    break;
-                case 'search':
-                    $campox='Correo';
-                    $placeholder='Correo';
-                    '<div class="col-6">';
-                    $gestorBD->generarFormularioBusqueda_($tabla, $campox, $placeholder);
-                    echo '</div>';
-                    break;
-                case 'delete':
-                    '<div class="col-6">';
-                    $gestorBD->generarFormularioBusquedaBorrar_($tabla);
-                    echo '</div>';
-                    break;
-                case 'Configsee':
-                    echo '<div class="col-12 d-flex justify-content-between"><h4>Formulario para crear una nueva tabla</h4></div> <div class="col-6">'; 
-                    $gestorBD->mostrarFormularioCrearTabla();
-                    echo '</div></div>';
-                    echo '<div class="col-12 d-flex justify-content-between"><h4>Formulario para agregar campos a la tabla $tabla</h4></div> <div class="col-6">'; 
-                    $gestorBD->mostrarFormularioAgregarCampos('Tiendas');
-                    echo '</div></div>';
-                    break;    
-                    
-                
-                default:
-                    // Acción no válida
-                    echo "Acción no válida.";
-                    break;
-            }
-        } 
-    } 
-}
-?>
-
-<?php
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    if (isset($_POST['f'])) {
-        $valor_f = $_POST['f'];
-        $partes = explode('-', $valor_f);
-        if (count($partes) == 2) {
-            $tabla = $partes[0];
-            $accion = $partes[1];
-
-            include 'GestorDB.php';
-            $gestorBD = new GestorDB();
-
-            switch ($accion) {
-                case 'search':
-                    $campox='Correo';
-                    $placeholder='Correo';
-                    echo '<div class="col-6">'; 
-                    $gestorBD->generarFormularioBusqueda_($tabla, $campox, $placeholder);
-                    echo '</div>';
-                    $tabla = $_POST['tabla'];
-                    $campox = $_POST['campo'];  
-                    $dato = $_POST['dato'];
-                    echo '<div class="col-6">';
-                    $gestorBD->buscarPorCampo_($tabla, $campox, $dato);
-                    echo '</div>';
-                    break;
-                case 'delete':
-                    echo '<div class="col-6">'; 
-                    $gestorBD->generarFormularioBusquedaBorrar_($tabla);
-                    echo '</div>';
-                    $tabla = $_POST['tabla'];
-                    $campox = $_POST['campo'];  
-                    $dato = $_POST['dato'];
-                    if($dato != null){
-                    echo '<div class="col-6">';     
-                    $gestorBD->buscarPorCampodelete_($tabla, $campox, $dato);
-                    echo '</div>';
-                    }
-                    break;
-                case 'edit':
-                    $dato = $_POST['dato'];
-                    $campox = $_POST['campo'];
-                    $placeholder=$_POST['placeholder'];
-                    echo '<div class="col-6">'; 
-                    $gestorBD->generarFormularioBusquedaActualizacion_($tabla, $campox, $placeholder);
-                     echo '</div>';
-                    echo '<div class="col-12 d-flex justify-content-between"><h4>Formulario para Actualizar</h4></div> <div class="col-6">'; 
-                    $gestorBD->generarFormularioActualizar($tabla, $campox, $dato);
-                    echo '</div>';
-                    break;
-                case 'seeConsulta':
-                    echo '<h2>Reporte</h2>';
-                    if (isset($_POST['Consulta'])) {
-                     $Consulta = $_POST['Consulta'];
-                     $Consulta= urldecode($Consulta);
-                    $gestorBD->generarVistaConsultas_($Consulta);
-                    $Consulta=urlencode($Consulta);
-                      
-                echo '<div class="col-12 mb-3 d-flex">
-                <a href="javascript:void(0);" onclick="exportConsultaCsv(\''.$Consulta.'\')" class="text-primary mr-3 animation-icon d-flex">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/uninstalling-updates/uninstalling-updates.gif" class="play" alt="">
-                  </div>
-                  Exportar CSV
-                </a>
-                <a href="javascript:void(0);" onclick="imprimirConsultaCsv(\''.$Consulta.'\')" class="text-primary animation-icon d-flex d-flex align-items-center">
-                  <div class="mr-2">
-                    <img src="assets/img/animated-icons/print/print.svg" class="stop" alt="">
-                    <img src="assets/img/animated-icons/print/print.gif" class="play" alt="">
-                  </div>
-                  Imprimir PDF
-                </a>
-               </div>';
-                    }
-                    break;    
-                default:
-                    // Acción no válida
-                    //echo "Acción no válida.";
-                    break;
-            }
-        } 
-    } 
-} 
-?> 
-
-<?php
-if ($_SERVER["REQUEST_METHOD"] == "GET") {
-    if (isset($_GET['f'])) {
-        $valor_f = $_GET['f'];
-        $partes = explode('-', $valor_f);
-        if (count($partes) == 2) {
-            $tabla = $partes[0];
-            $accion = $partes[1];
-
-            switch ($accion) {
-                case 'edit':
-                    $campox='Correo';
-                    $placeholder='Correo';
-                    echo '<div class="col-6">'; 
-                    $gestorBD->generarFormularioBusquedaActualizacion_($tabla, $campox, $placeholder);
-                    echo '</div>';
-                    break;
-                case 'see':
-                    $campox='Correo';
-                    $placeholder='Correo';
-                    echo '<br><br><div class="col-6">'; 
-                    $gestorBD->generarFormularioBusqueda_($tabla, $campox, $placeholder);
-                    echo '</div>';
-                    break;
-                default:
-                    // Acción no válida
-                    //echo "Acción no válida.";
-                    break;
-            }
-        } 
-    } 
-}
-        if($tabla=='Tiendas'){
-        echo '<br><br><li> <a href="tienda.php" target= "_blank"><span class="nav-text">Ejemplo de Tienda en  Linea</span></a></li>';
-        }
-?> 
-                     
-              </div></div></div></div>
-                  
-              </div>
-        
-        
-
-
-<!-- HTML del formulario con Dropzone -->
-<div id="import-modal" class="modal fade" data-backdrop="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title">
-                    <div class="step-1">Importar productos desde CSV</div>
-                </h5>
-            </div>
-            <div class="modal-body p-lg">
-                <div class="step-1">
-                    <div class="row">
-                        <p class="px-3">Descargue una <a href="export.csv">plantilla CSV de muestra</a> para ver un ejemplo del formato requerido.</p>
-                        <div class="col-12 animation-icon">
-                           <form action="importcsv.php" method="post" enctype="multipart/form-data" id="dropzoneForm">
-                            <!-- Campo de entrada de archivo CSV -->
-                            <div class="form-group">
-                                <label for="csv_file">Seleccionar archivo CSV:</label>
-                                <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
-                            </div>
-                            <div class="col-12">
-                            <div class="form-group">
-                                <label for="sobrescribir">Sobrescribir productos existentes con el mismo identificador:</label>
-                                <input type="checkbox" id="sobrescribir" name="sobrescribir">
-                            </div>
-                            </div>
-                            
-                            <!-- Botones de acción -->
-                            <div class="step-1 text-right">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Subir y continuar</button>
-                            </div>
-                        </form>
-
-                        </div>
-                        
-                    </div>
-                </div>
-            </div>
-
-        </div><!-- /.modal-content -->
-    </div>
-</div>
-
-
-
-
-   
-    </div>
-
-   
-  </div>
-<?php include 'main06.php'; ?>
-<script>
-    function exportConsultaCsv(consulta) {
-        // Crear un formulario oculto
-        var form = document.createElement("form");
-        form.setAttribute("method", "POST");
-        form.setAttribute("action", "exportConsultacsv.php");
-
-        // Crear campo oculto para Consulta
-        var fieldConsulta = document.createElement("input");
-        fieldConsulta.setAttribute("type", "hidden");
-        fieldConsulta.setAttribute("name", "sql");
-        fieldConsulta.setAttribute("value", consulta);
-
-        // Agregar los campos al formulario
-        form.appendChild(fieldConsulta);
-
-        // Agregar el formulario al cuerpo del documento y enviarlo
-        document.body.appendChild(form);
-        form.submit();
-    }
-</script>
-<script>
-    function imprimirConsultaCsv(consulta) {
-        // Crear un formulario oculto
-        var form = document.createElement("form");
-        form.setAttribute("method", "POST");
-        form.setAttribute("action", "imprimirConsultaCsv.php");
-        form.setAttribute("target", "_blank");
-
-        // Crear campo oculto para Consulta
-        var fieldConsulta = document.createElement("input");
-        fieldConsulta.setAttribute("type", "hidden");
-        fieldConsulta.setAttribute("name", "sql");
-        fieldConsulta.setAttribute("value", consulta);
-
-        // Agregar los campos al formulario
-        form.appendChild(fieldConsulta);
-
-        // Agregar el formulario al cuerpo del documento y enviarlo
-        document.body.appendChild(form);
-        form.submit();
-    }
-</script>
-
-<?php include 'main07.php'; ?>
-</body>
-</html>
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GestorDB · Esquema dinámico</title><link rel="stylesheet" href="assets/gestordb.css"></head>
+<body><div class="layout"><?php include __DIR__.'/main05.php'; ?>
+<main class="content"><header><h1><?= $meta?$e($table):'Base de datos' ?></h1><span><?= count($schema) ?> tablas detectadas</span></header>
+<?php if (!$meta): ?>
+<section class="panel"><h2>Tablas maestras y detalles</h2><p>Selecciona una tabla en el menú. La jerarquía utiliza las claves foráneas reales del esquema MySQL.</p>
+<p>Una tabla con dos relaciones representa dos dependencias; no implica automáticamente dos aprobaciones humanas.</p></section>
+<?php else: ?>
+<section class="panel"><div class="toolbar">
+<a href="?table=<?=rawurlencode($table)?>&action=see">Registros</a>
+<a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a>
+<?php if(count($pk)===1): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
+<a href="?table=<?=rawurlencode($table)?>&action=delete">Eliminar</a><?php endif; ?>
+</div><p>Nivel <?= $e($meta['level']) ?> · Clave primaria: <?= $e(implode(', ', $pk)?:'sin PK') ?> · <?= count($meta['parents']) ?> relación(es) detectada(s)</p>
+<?php foreach($meta['parents'] as $parent): ?><p class="rel">Depende de <strong><?= $e($parent['table']) ?></strong> mediante <?= $e(implode(', ',array_keys($parent['mapping']))) ?></p><?php endforeach; ?>
+<?php if($meta['cycle']):?><p class="warning">Se detectó un ciclo de relaciones; el nivel es orientativo.</p><?php endif; ?>
+<?php if($error):?><p class="warning"><?=$e($error)?></p><?php endif; ?>
+<?php if($action==='see'): ?>
+<div class="scroll"><table><thead><tr><?php foreach($meta['columns'] as $name=>$col):?><th><?=$e($name)?></th><?php endforeach;?></tr></thead><tbody>
+<?php foreach($rows as $row):?><tr><?php foreach($meta['columns'] as $name=>$col):?><td><?=$e($row[$name]??'')?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table></div>
+<p>Hasta 100 registros por consulta.</p>
+<?php else: ?>
+<?php if(in_array($action,['edit','delete'],true)&&count($pk)!==1):?>
+<p class="warning">Se requiere una clave primaria simple para esta operación.</p>
+<?php else: ?>
+<form action="procesar.php" method="post" class="edit-form">
+<input type="hidden" name="csrf" value="<?=$e($_SESSION['gestordb_csrf'])?>">
+<input type="hidden" name="table" value="<?=$e($table)?>">
+<input type="hidden" name="action" value="<?=$e($action)?>">
+<?php if($action!=='add'):?>
+<label><?=$e($pk[0])?> (valor exacto)<input name="pk_value" required></label>
+<?php endif; ?>
+<?php if($action!=='delete'): ?>
+<?php foreach($meta['columns'] as $name=>$col):
+if(str_contains(strtolower($col['EXTRA']),'auto_increment'))continue; ?>
+<label><?=$e($name)?> <small><?=$e($col['DATA_TYPE'])?><?=$col['IS_NULLABLE']==='YES'?' · permite NULL':''?></small>
+<input name="field[<?=$e($name)?>]" placeholder="Valor (vacío = omitir en alta)"></label>
+<?php endforeach;?>
+<?php else: ?><p class="warning">Se eliminará únicamente el registro con la clave primaria indicada. Esta operación es irreversible.</p><?php endif;?>
+<button type="submit"><?= $e(match($action){'add'=>'Insertar','edit'=>'Actualizar','delete'=>'Eliminar'}) ?></button>
+</form>
+<?php endif; ?>
+<?php endif;?>
+</section><?php endif;?></main></div></body></html>

@@ -20,3 +20,8 @@ jobs:
           php -l db.php
           php -l GestorDB.php
           php -l dashboard.php
+          php -l dashboard-legacy.php
+          php -l SchemaHierarchy.php
+          php -l main05.php
+          php -l procesar.php
+          php -l index.php
