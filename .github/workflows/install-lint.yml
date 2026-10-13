@@ -21,6 +21,8 @@ jobs:
           php -l GestorDB.php
           php -l GestorKeys.php
           php -l GestorFieldRenderer.php
+          php -l GestorFieldCodec.php
+          php tests/typed-fields.php
           php -l dashboard.php
           php -l dashboard-legacy.php
           php -l SchemaHierarchy.php

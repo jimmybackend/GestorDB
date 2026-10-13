@@ -8,6 +8,7 @@ if (!is_string($csrf)||!isset($_SESSION['gestordb_csrf'])||!hash_equals($_SESSIO
 require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
+require_once __DIR__.'/GestorFieldCodec.php';
 $identity=GestorAccess::requireIdentity();
 if(($identity['mode']??'')!=='admin'){http_response_code(403);exit('CRUD de usuarios no autorizado');}
 $schema=(new SchemaHierarchy($db_connection))->inspect();
@@ -19,11 +20,16 @@ $meta=$schema[$table];
 $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $allowed=array_keys($meta['columns']);
 $values=[];
+$expressions=[];
 foreach ($fields as $key=>$value) {
-    if (!is_string($key)||!in_array($key,$allowed,true)||!is_string($value)) {http_response_code(400);exit('Invalid field');}
+    if (!is_string($key)||!in_array($key,$allowed,true)||!(is_string($value)||is_array($value))) {http_response_code(400);exit('Invalid field');}
     if (str_contains(strtolower($meta['columns'][$key]['EXTRA']),'auto_increment'))continue;
     // Omit empty fields rather than overwriting existing values or defaults.
-    if ($value!=='') $values[$key]=$value;
+    if ($value!=='' && $value!==[]) {
+        $decoded=GestorFieldCodec::decode($meta['columns'][$key],$value);
+        $values[$key]=$decoded['value'];
+        $expressions[$key]=$decoded['sql'];
+    }
 }
 $pk=$meta['pk'];
 $keys=$_POST['pk']??[];
@@ -39,14 +45,14 @@ try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
         $names=array_keys($values);
-        $sql='INSERT INTO '.$quote($table).' ('.implode(',',array_map($quote,$names)).') VALUES ('.implode(',',array_fill(0,count($names),'?')).')';
+        $sql='INSERT INTO '.$quote($table).' ('.implode(',',array_map($quote,$names)).') VALUES ('.implode(',',array_map(static fn($name)=>$expressions[$name],$names)).')';
         $parameters=array_values($values);
     } elseif ($action==='edit') {
         if (!$values) throw new RuntimeException('No values supplied');
-        foreach($pk as $key) unset($values[$key]);
+        foreach($pk as $key){ unset($values[$key],$expressions[$key]); }
         if (!$values) throw new RuntimeException('No editable fields supplied');
         $names=array_keys($values);
-        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$where;
+        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'='.$expressions[$col],$names)).' WHERE '.$where;
         $parameters=[...array_values($values),...$keyParameters];
     } else {
         $sql='DELETE FROM '.$quote($table).' WHERE '.$where;
