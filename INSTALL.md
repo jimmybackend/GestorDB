@@ -27,3 +27,13 @@ Las variables `GESTORDB_ACCESS_MODE`, `GESTORDB_AUTH_TABLE` y `GESTORDB_ADMIN_AL
 Los cambios de configuración después de la primera instalación exigen editar la configuración privada fuera del servidor web o las variables de entorno: el instalador de un solo uso no sobrescribe configuraciones existentes. Las credenciales MySQL se guardan fuera de la raíz del repositorio.
 
 La interfaz actual es independiente de los `main00.php`, `main0.php` y otros archivos antiguos: esa nota de versiones anteriores ya no describe el dashboard nuevo, aunque el respaldo `dashboard-legacy.php` aún los referencia.
+
+## Descargar el paquete instalable
+
+Cada ejecución exitosa de GitHub Actions sobre la rama `main` genera el artefacto `GestorDB-installer` con un ZIP desplegable. Abre **Actions → GestorDB installation lint → última ejecución exitosa en main → Artifacts → GestorDB-installer**. Descomprime en el directorio de la aplicación, activa PHP 8.2+ con mysqli y accede por HTTPS a `/install/` tras definir el token privado.
+
+El ZIP incluye los PHP de la aplicación, la interfaz, CSS y documentación; no contiene el SQL de ejemplo, datos de clientes ni las carpetas históricas. Tampoco contiene credenciales de producción. La configuración privada se escribe un nivel por encima del directorio de la aplicación.
+
+El modo con acceso sin contraseña de aplicación para administradores sólo debe desplegarse tras una VPN, una red privada o una protección de servidor equivalente.
+
+**Alcance de esta entrega:** paquete instalable y pruebas de sintaxis y lógica sin base de datos. Las escrituras de usuarios comunes siguen deshabilitadas, y no se ha ejecutado una prueba integral de MySQL real. Por ello no debe anunciarse como edición estable certificada para producción pública.

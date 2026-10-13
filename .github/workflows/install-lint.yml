@@ -23,6 +23,7 @@ jobs:
           php -l GestorFieldRenderer.php
           php -l GestorFieldCodec.php
           php tests/typed-fields.php
+          php tests/installer-path.php
           php -l dashboard.php
           php -l dashboard-legacy.php
           php -l SchemaHierarchy.php
@@ -37,3 +38,15 @@ jobs:
           php -l RelationNavigator.php
           php -l OwnershipPolicy.php
           php tests/ownership-policy.php
+      - name: Package deployable web installer
+        if: github.ref == 'refs/heads/main'
+        run: |
+          zip -q -r GestorDB-installer.zip *.php install assets *.md LICENSE -x 'dashboard-legacy.php'
+          unzip -l GestorDB-installer.zip
+      - name: Upload installer ZIP
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: GestorDB-installer
+          path: GestorDB-installer.zip
+          retention-days: 30
