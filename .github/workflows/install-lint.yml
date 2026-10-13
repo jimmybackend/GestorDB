@@ -31,3 +31,4 @@ jobs:
           php -l SchemaKeys.php
           php -l schema-keys-process.php
           php -l RelationNavigator.php
+          php -l OwnershipPolicy.php
