@@ -45,6 +45,19 @@ if ($meta && $action==='see') {
 <title>GestorDB · Esquema dinámico</title><link rel="stylesheet" href="assets/gestordb.css"></head>
 <body><div class="layout"><?php include __DIR__.'/main05.php'; ?>
 <main class="content"><header><h1><?= $meta?$e($table):'Base de datos' ?></h1><span><?= count($schema) ?> tablas detectadas</span></header>
+<?php if(($identity['mode']??'')==='admin'): ?>
+<section class="panel"><h2>Administrar estructura MySQL</h2><p>Crear tabla, agregar columna o cambiar posición. Las modificaciones se reflejan al recargar el menú y la tabla.</p>
+<form method="post" action="schema-process.php" class="edit-form">
+<input type="hidden" name="csrf" value="<?=$e($_SESSION['gestordb_csrf'])?>">
+<label>Operación<select name="op"><option value="create">Crear tabla</option><option value="add">Agregar columna</option><option value="move">Mover columna (simple)</option></select></label>
+<label>Tabla<input name="table" value="<?=$e($table)?>" required></label>
+<label>Columna<input name="column" required></label>
+<label>Tipo de dato<select name="type"><option>VARCHAR</option><option>INT</option><option>BIGINT</option><option>TEXT</option><option>DATE</option><option>DATETIME</option><option>DECIMAL</option><option>BOOLEAN</option></select></label>
+<label>Longitud VARCHAR<input name="length" type="number" min="1" max="4096" value="255"></label>
+<label>Posición<select name="after"><option value="">Al final</option><option value="__FIRST__">Al principio</option><?php if($meta):foreach($meta['columns'] as $name=>$column):?><option value="<?=$e($name)?>">Después de <?=$e($name)?></option><?php endforeach;endif;?></select></label>
+<button type="submit">Aplicar cambio al esquema</button>
+</form><p class="warning">DDL puede bloquear tablas. No se ejecutan eliminaciones ni modificaciones destructivas automáticas. Haz respaldo antes de cambiar producción.</p></section>
+<?php endif; ?>
 <?php if (!$meta): ?>
 <section class="panel"><h2>Tablas maestras y detalles</h2><p>Selecciona una tabla en el menú. La jerarquía utiliza las claves foráneas reales del esquema MySQL.</p>
 <p>Una tabla con dos relaciones representa dos dependencias; no implica automáticamente dos aprobaciones humanas.</p></section>
