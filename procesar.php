@@ -26,8 +26,15 @@ foreach ($fields as $key=>$value) {
     if ($value!=='') $values[$key]=$value;
 }
 $pk=$meta['pk'];
-if ($action!=='add' && count($pk)!==1) {http_response_code(400);exit('A simple primary key is required');}
-if ($action!=='add' && (!isset($_POST['pk_value'])||!is_string($_POST['pk_value'])||$_POST['pk_value']==='')) {http_response_code(400);exit('Missing primary key value');}
+$keys=$_POST['pk']??[];
+if($action!=='add'){
+ if(!$pk||!is_array($keys)||count($keys)!==count($pk)){http_response_code(400);exit('Invalid primary key');}
+ foreach($pk as $key){
+  if(!isset($keys[$key])||!is_string($keys[$key])||$keys[$key]===''){http_response_code(400);exit('Incomplete primary key');}
+ }
+}
+$where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
+$keyParameters=$action==='add'?[]:array_map(static fn($key)=>$keys[$key],$pk);
 try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
@@ -36,14 +43,14 @@ try {
         $parameters=array_values($values);
     } elseif ($action==='edit') {
         if (!$values) throw new RuntimeException('No values supplied');
-        unset($values[$pk[0]]);
+        foreach($pk as $key) unset($values[$key]);
         if (!$values) throw new RuntimeException('No editable fields supplied');
         $names=array_keys($values);
-        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$quote($pk[0]).'=?';
-        $parameters=[...array_values($values),$_POST['pk_value']];
+        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$where;
+        $parameters=[...array_values($values),...$keyParameters];
     } else {
-        $sql='DELETE FROM '.$quote($table).' WHERE '.$quote($pk[0]).'=?';
-        $parameters=[$_POST['pk_value']];
+        $sql='DELETE FROM '.$quote($table).' WHERE '.$where;
+        $parameters=$keyParameters;
     }
     $stmt=$db_connection->prepare($sql);
     $types=str_repeat('s',count($parameters));

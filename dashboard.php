@@ -81,7 +81,7 @@ if ($meta && $action==='see') {
 <section class="panel"><div class="toolbar">
 <a href="?table=<?=rawurlencode($table)?>&action=see">Registros</a>
 <?php if(($identity['mode']??'')==='admin'): ?><a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a><?php endif; ?>
-<?php if(($identity['mode']??'')==='admin' && count($pk)===1): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
+<?php if(($identity['mode']??'')==='admin' && count($pk)>0): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
 <a href="?table=<?=rawurlencode($table)?>&action=delete">Eliminar</a><?php endif; ?>
 </div><p>Nivel <?= $e($meta['level']) ?> · Clave primaria: <?= $e(implode(', ', $pk)?:'sin PK') ?> · <?= count($meta['parents']) ?> relación(es) detectada(s)</p>
 <?php foreach($meta['parents'] as $parent): ?><p class="rel">Depende de <strong><?= $e($parent['table']) ?></strong> mediante <?= $e(implode(', ',array_keys($parent['mapping']))) ?></p><?php endforeach; ?>
@@ -92,7 +92,7 @@ if ($meta && $action==='see') {
 <?php foreach($rows as $row):?><tr><?php foreach($meta['columns'] as $name=>$col):?><td><?=$e($row[$name]??'')?></td><?php endforeach;?></tr><?php endforeach;?></tbody></table></div>
 <p>Hasta 100 registros por consulta.</p>
 <?php else: ?>
-<?php if(in_array($action,['edit','delete'],true)&&count($pk)!==1):?>
+<?php if(in_array($action,['edit','delete'],true)&&count($pk)<1):?>
 <p class="warning">Se requiere una clave primaria simple para esta operación.</p>
 <?php else: ?>
 <form action="procesar.php" method="post" class="edit-form">
@@ -100,7 +100,9 @@ if ($meta && $action==='see') {
 <input type="hidden" name="table" value="<?=$e($table)?>">
 <input type="hidden" name="action" value="<?=$e($action)?>">
 <?php if($action!=='add'):?>
-<label><?=$e($pk[0])?> (valor exacto)<input name="pk_value" required></label>
+<?php foreach($pk as $key): ?>
+<label><?=$e($key)?> (clave primaria, coincidencia exacta)<input name="pk[<?=$e($key)?>]" required></label>
+<?php endforeach; ?>
 <?php endif; ?>
 <?php if($action!=='delete'): ?>
 <?php foreach($meta['columns'] as $name=>$col):
