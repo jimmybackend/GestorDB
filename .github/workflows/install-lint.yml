@@ -28,3 +28,5 @@ jobs:
           php -l GestorAccess.php
           php -l SchemaEditor.php
           php -l schema-process.php
+          php -l SchemaKeys.php
+          php -l schema-keys-process.php

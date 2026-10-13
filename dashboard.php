@@ -58,6 +58,22 @@ if ($meta && $action==='see') {
 <button type="submit">Aplicar cambio al esquema</button>
 </form><p class="warning">DDL puede bloquear tablas. No se ejecutan eliminaciones ni modificaciones destructivas automáticas. Haz respaldo antes de cambiar producción.</p></section>
 <?php endif; ?>
+<?php if(($identity['mode']??'')==='admin' && $meta): ?>
+<section class="panel"><h2>Claves e índices de <?= $e($table) ?></h2>
+<p>Agrega una clave primaria, un índice o una relación foránea. MySQL validará restricciones y registros existentes.</p>
+<form method="post" action="schema-keys-process.php" class="edit-form">
+<input type="hidden" name="csrf" value="<?=$e($_SESSION['gestordb_csrf'])?>">
+<input type="hidden" name="table" value="<?=$e($table)?>">
+<label>Operación<select name="op" required><option value="primary">Agregar clave primaria</option><option value="index">Agregar índice</option><option value="foreign">Agregar clave foránea</option></select></label>
+<label>Columna local<select name="column" required><?php foreach($meta['columns'] as $name=>$col):?><option value="<?=$e($name)?>"><?=$e($name)?></option><?php endforeach;?></select></label>
+<label>Nombre del índice<input name="index_name" placeholder="idx_nombre"></label>
+<label>Tabla relacionada<select name="parent"><option value="">Selecciona tabla</option><?php foreach($schema as $name=>$tbl):?><option value="<?=$e($name)?>"><?=$e($name)?></option><?php endforeach;?></select></label>
+<label>Columna relacionada<input name="parent_column" placeholder="id"></label>
+<label>Nombre de la restricción FK<input name="constraint" placeholder="fk_tabla_relacion"></label>
+<label><input type="checkbox" name="confirm" value="yes" required> Confirmo que tengo respaldo de mi base antes de cambiar índices o claves.</label>
+<button type="submit">Aplicar cambio</button></form>
+<p class="warning">No modifica ni elimina las claves existentes. Las relaciones utilizan RESTRICT para evitar borrados y actualizaciones en cascada.</p>
+</section><?php endif; ?>
 <?php if (!$meta): ?>
 <section class="panel"><h2>Tablas maestras y detalles</h2><p>Selecciona una tabla en el menú. La jerarquía utiliza las claves foráneas reales del esquema MySQL.</p>
 <p>Una tabla con dos relaciones representa dos dependencias; no implica automáticamente dos aprobaciones humanas.</p></section>
