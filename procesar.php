@@ -26,7 +26,7 @@ foreach ($fields as $key=>$value) {
     if ($value!=='') $values[$key]=$value;
 }
 $pk=$meta['pk'];
-if ($action!=='add' && count($pk)<1) {http_response_code(400);exit('A simple primary key is required');}
+if ($action!=='add' && count($pk)!==1) {http_response_code(400);exit('A simple primary key is required');}
 if ($action!=='add' && (!isset($_POST['pk_value'])||!is_string($_POST['pk_value'])||$_POST['pk_value']==='')) {http_response_code(400);exit('Missing primary key value');}
 try {
     if ($action==='add') {
