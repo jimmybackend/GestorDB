@@ -26,3 +26,5 @@ jobs:
           php -l procesar.php
           php -l index.php
           php -l GestorAccess.php
+          php -l SchemaEditor.php
+          php -l schema-process.php
