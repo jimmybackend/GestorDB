@@ -34,7 +34,7 @@ if($action!=='add'){
  }
 }
 $where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
-$keyParameters=array_map(static fn($key)=>$keys[$key],$pk);
+$keyParameters=$action==='add'?[]:array_map(static fn($key)=>$keys[$key],$pk);
 try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
