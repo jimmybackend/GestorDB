@@ -1,0 +1,22 @@
+name: GestorDB installation lint
+on:
+  push:
+    branches: [main, installer-web-2026]
+  pull_request:
+jobs:
+  php-syntax:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mysqli
+          coverage: none
+      - run: |
+          php -l install/index.php
+          php -l db.php
+          php -l GestorDB.php
+          php -l dashboard.php
