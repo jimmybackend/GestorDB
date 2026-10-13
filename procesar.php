@@ -45,14 +45,14 @@ try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
         $names=array_keys($values);
-        $sql='INSERT INTO '.$quote($table).' ('.implode(',',array_map($quote,$names)).') VALUES ('.implode(',',array_fill(0,count($names),'?')).')';
+        $sql='INSERT INTO '.$quote($table).' ('.implode(',',array_map($quote,$names)).') VALUES ('.implode(',',array_map(static fn($name)=>$expressions[$name],$names)).')';
         $parameters=array_values($values);
     } elseif ($action==='edit') {
         if (!$values) throw new RuntimeException('No values supplied');
-        foreach($pk as $key) unset($values[$key]);
+        foreach($pk as $key){ unset($values[$key],$expressions[$key]); }
         if (!$values) throw new RuntimeException('No editable fields supplied');
         $names=array_keys($values);
-        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'=?',$names)).' WHERE '.$where;
+        $sql='UPDATE '.$quote($table).' SET '.implode(',',array_map(static fn($col)=>$quote($col).'='.$expressions[$col],$names)).' WHERE '.$where;
         $parameters=[...array_values($values),...$keyParameters];
     } else {
         $sql='DELETE FROM '.$quote($table).' WHERE '.$where;
