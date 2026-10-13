@@ -17,4 +17,13 @@ Esta edición usa un instalador web de un solo uso para conectar una base de dat
 
 Alternativamente, `db.php` lee las variables `GESTORDB_DB_HOST`, `GESTORDB_DB_USER`, `GESTORDB_DB_PASSWORD`, `GESTORDB_DB_NAME` y `GESTORDB_DB_PORT`. El instalador no es necesario en ese modo.
 
-**Precaución:** el repositorio contiene un `dashboard.php` que referencia archivos `main00.php`, `main0.php`, `main01.php` y `main05.php`, no presentes en la raíz de este repositorio. El instalador configura la conexión, pero no inventa ni instala esas dependencias externas. El código heredado y su SQL dinámico no tienen una auditoría completa de seguridad. No exponer la aplicación al público sin protección y revisión.
+
+## Selección de acceso en el instalador
+
+El instalador permite guardar el modo de acceso `users`, `admin` o `mixed`; la tabla de autenticación (`Users` por defecto) y la lista de IP de administración. En `users` o `mixed` se comprueba que la tabla elegida contenga `id`, `email` y `password`. El inicio de sesión sólo admite contraseñas PHP compatibles con `password_verify()`; la simple presencia de columnas no demuestra que las contraseñas existentes tengan hashes válidos.
+
+Las variables `GESTORDB_ACCESS_MODE`, `GESTORDB_AUTH_TABLE` y `GESTORDB_ADMIN_ALLOWED_IPS` tienen precedencia sobre las opciones guardadas. La dirección IP se coteja con `REMOTE_ADDR`, no con cabeceras proporcionadas por visitantes. El acceso administrativo sin contraseña de aplicación **sólo debe usarse mediante una red de administración aislada y autenticada (por ejemplo VPN)**. No implica autorización para abrir el dashboard a Internet.
+
+Los cambios de configuración después de la primera instalación exigen editar la configuración privada fuera del servidor web o las variables de entorno: el instalador de un solo uso no sobrescribe configuraciones existentes. Las credenciales MySQL se guardan fuera de la raíz del repositorio.
+
+La interfaz actual es independiente de los `main00.php`, `main0.php` y otros archivos antiguos: esa nota de versiones anteriores ya no describe el dashboard nuevo, aunque el respaldo `dashboard-legacy.php` aún los referencia.

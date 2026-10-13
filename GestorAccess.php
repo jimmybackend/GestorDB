@@ -1,12 +1,24 @@
 <?php
 declare(strict_types=1);
 final class GestorAccess {
+    private static function settings(): array {
+        $file=dirname(__DIR__).'/gestordb-config.php';
+        if(!is_file($file))return [];
+        $settings=require $file;
+        return is_array($settings)?$settings:[];
+    }
+    private static function option(string $env, string $configKey, string $fallback): string {
+        $value=getenv($env);
+        if(is_string($value)&&$value!=='')return $value;
+        $settings=self::settings();
+        return isset($settings[$configKey])&&is_string($settings[$configKey])?$settings[$configKey]:$fallback;
+    }
     public static function mode(): string {
-        $mode = getenv('GESTORDB_ACCESS_MODE') ?: 'users';
+        $mode = self::option('GESTORDB_ACCESS_MODE','access_mode','users');
         return in_array($mode, ['admin','users','mixed'],true) ? $mode : 'users';
     }
     public static function adminTrusted(): bool {
-        $allow = array_filter(array_map('trim',explode(',',getenv('GESTORDB_ADMIN_ALLOWED_IPS') ?: '127.0.0.1,::1')));
+        $allow = array_filter(array_map('trim',explode(',',self::option('GESTORDB_ADMIN_ALLOWED_IPS','admin_allowed_ips','127.0.0.1,::1'))));
         return in_array($_SERVER['REMOTE_ADDR'] ?? '', $allow, true);
     }
     public static function identity(): ?array {
@@ -21,7 +33,7 @@ final class GestorAccess {
     }
     public static function usersTable(mysqli $db): ?array {
         // Never select credential-like tables by names alone. An explicit table can be configured.
-        $table = getenv('GESTORDB_AUTH_TABLE') ?: 'Users';
+        $table = self::option('GESTORDB_AUTH_TABLE','auth_table','Users');
         $cols = [];
         $stmt=$db->prepare('SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?');
         $stmt->bind_param('s',$table); $stmt->execute();
