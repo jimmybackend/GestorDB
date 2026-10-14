@@ -8,6 +8,17 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testroot
+          MYSQL_DATABASE: gestordb_test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -ptestroot"
+          --health-interval=10s --health-timeout=5s --health-retries=12
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -37,6 +48,9 @@ jobs:
           php -l schema-keys-process.php
           php -l RelationNavigator.php
           php -l OwnershipPolicy.php
+          php -l OwnedWriteGuard.php
+          php tests/owned-writes.php
+          php tests/mysql-owned-writes.php
           php tests/ownership-policy.php
       - name: Package deployable web installer
         if: github.ref == 'refs/heads/main'

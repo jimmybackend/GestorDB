@@ -7,6 +7,7 @@ require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 require_once __DIR__.'/RelationNavigator.php';
 require_once __DIR__.'/GestorFieldRenderer.php';
+require_once __DIR__.'/OwnershipPolicy.php';
 $identity=GestorAccess::requireIdentity();
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
@@ -27,17 +28,17 @@ if(isset($_GET['relation'])){
  try{$relationScope=$navigator->scope($table,$_GET['relation'],$identity);}catch(Throwable $ex){http_response_code(404);exit('Related records unavailable');}
 }
 if (($identity['mode']??'')==='user') {
-    $schema=array_filter($schema,static fn($item)=>GestorAccess::ownerColumn($item,(string)$identity['table'])!==null);
+    $schema=array_filter($schema,static fn($item)=>OwnershipPolicy::column($item,(string)$identity['table'])!==null);
     if($table!==''&&!isset($schema[$table])){http_response_code(403);exit('Tabla no autorizada');}
     $meta=$table!==''?$schema[$table]:null;
-    if($action!=='see'){http_response_code(403);exit('Edición de usuario no habilitada');}
+    if($table===(string)$identity['table']){http_response_code(403);exit('Tabla protegida');}
 }
 if ($meta && $action==='see') {
     try {
         $cols=array_keys($meta['columns']);
         $sql='SELECT * FROM '.$quote($table);
         if(($identity['mode']??'')==='user') {
-            $owner=GestorAccess::ownerColumn($meta,(string)$identity['table']);
+            $owner=OwnershipPolicy::column($meta,(string)$identity['table']);
             $sql.=' WHERE '.$quote($owner).'=? LIMIT 100';
             $stmt=$db_connection->prepare($sql);
             $stmt->bind_param('s',$identity['id']);
@@ -96,8 +97,8 @@ if ($meta && $action==='see') {
 <?php else: ?>
 <section class="panel"><div class="toolbar">
 <a href="?table=<?=rawurlencode($table)?>&action=see">Registros</a>
-<?php if(($identity['mode']??'')==='admin'): ?><a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a><?php endif; ?>
-<?php if(($identity['mode']??'')==='admin' && count($pk)>0): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
+<a href="?table=<?=rawurlencode($table)?>&action=add">Agregar</a>
+<?php if(count($pk)>0): ?><a href="?table=<?=rawurlencode($table)?>&action=edit">Editar</a>
 <a href="?table=<?=rawurlencode($table)?>&action=delete">Eliminar</a><?php endif; ?>
 </div><p>Nivel <?= $e($meta['level']) ?> · Clave primaria: <?= $e(implode(', ', $pk)?:'sin PK') ?> · <?= count($meta['parents']) ?> relación(es) detectada(s)</p>
 <?php foreach($meta['parents'] as $parent): ?><p class="rel">Depende de <strong><?= $e($parent['table']) ?></strong> mediante <?= $e(implode(', ',array_keys($parent['mapping']))) ?></p><?php endforeach; ?>
@@ -117,7 +118,7 @@ $params=['table'=>$child['table'],'relation'=>$child['constraint'],'parent_pk'=>
 <p>Hasta 100 registros por consulta.</p>
 <?php else: ?>
 <?php if(in_array($action,['edit','delete'],true)&&count($pk)<1):?>
-<p class="warning">Se requiere una clave primaria simple para esta operación.</p>
+<p class="warning">Se requiere clave primaria para esta operación.</p>
 <?php else: ?>
 <form action="procesar.php" method="post" class="edit-form">
 <input type="hidden" name="csrf" value="<?=$e($_SESSION['gestordb_csrf'])?>">
@@ -130,7 +131,8 @@ $params=['table'=>$child['table'],'relation'=>$child['constraint'],'parent_pk'=>
 <?php endif; ?>
 <?php if($action!=='delete'): ?>
 <?php foreach($meta['columns'] as $name=>$col):
-if(str_contains(strtolower($col['EXTRA']),'auto_increment'))continue; ?>
+if(str_contains(strtolower($col['EXTRA']),'auto_increment'))continue;
+if(($identity['mode']??'')==='user' && $name===OwnershipPolicy::column($meta,(string)$identity['table']))continue; ?>
 <?=GestorFieldRenderer::render($name,$col,$action==='add')?>
 <?php endforeach;?>
 <?php else: ?><p class="warning">Se eliminará únicamente el registro con la clave primaria indicada. Esta operación es irreversible.</p><?php endif;?>

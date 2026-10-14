@@ -9,20 +9,28 @@ require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 require_once __DIR__.'/GestorFieldCodec.php';
+require_once __DIR__.'/OwnedWriteGuard.php';
 $identity=GestorAccess::requireIdentity();
-if(($identity['mode']??'')!=='admin'){http_response_code(403);exit('CRUD de usuarios no autorizado');}
+$isUser=($identity['mode']??'')==='user';
+if(!$isUser&&($identity['mode']??'')!=='admin'){http_response_code(403);exit('Acceso no autorizado');}
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 $table=$_POST['table']??null;
 $action=$_POST['action']??null;
 $fields=$_POST['field']??[];
 if (!is_string($table)||!isset($schema[$table])||!is_string($action)||!in_array($action,['add','edit','delete'],true)||!is_array($fields)) {http_response_code(400);exit('Invalid operation');}
 $meta=$schema[$table];
+$owner=null;
+if($isUser){
+    try{$owner=OwnedWriteGuard::owner($meta,(string)$identity['table'],$table);}
+    catch(DomainException $e){http_response_code(403);exit('Propiedad no verificable');}
+}
 $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $allowed=array_keys($meta['columns']);
 $values=[];
 $expressions=[];
 foreach ($fields as $key=>$value) {
     if (!is_string($key)||!in_array($key,$allowed,true)||!(is_string($value)||is_array($value))) {http_response_code(400);exit('Invalid field');}
+    if($isUser && $key===$owner)continue;
     if (str_contains(strtolower($meta['columns'][$key]['EXTRA']),'auto_increment'))continue;
     // Omit empty fields rather than overwriting existing values or defaults.
     if ($value!=='' && $value!==[]) {
@@ -30,6 +38,10 @@ foreach ($fields as $key=>$value) {
         $values[$key]=$decoded['value'];
         $expressions[$key]=$decoded['sql'];
     }
+}
+if($isUser && $action==='add'){
+    $values=OwnedWriteGuard::insertOwner($values,$owner,(string)$identity['id']);
+    $expressions[$owner]='?';
 }
 $pk=$meta['pk'];
 $keys=$_POST['pk']??[];
@@ -41,6 +53,10 @@ if($action!=='add'){
 }
 $where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
 $keyParameters=$action==='add'?[]:array_map(static fn($key)=>$keys[$key],$pk);
+if($isUser&&$action!=='add'){
+    $where=OwnedWriteGuard::scopedWhere($pk,$owner);
+    $keyParameters[]=(string)$identity['id'];
+}
 try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
