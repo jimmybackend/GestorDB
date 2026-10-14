@@ -9,7 +9,7 @@ require_once __DIR__.'/db.php';
 require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 require_once __DIR__.'/GestorFieldCodec.php';
-require_once __DIR__.'/OwnershipPolicy.php';
+require_once __DIR__.'/OwnedWriteGuard.php';
 $identity=GestorAccess::requireIdentity();
 $isUser=($identity['mode']??'')==='user';
 if(!$isUser&&($identity['mode']??'')!=='admin'){http_response_code(403);exit('Acceso no autorizado');}
@@ -21,9 +21,8 @@ if (!is_string($table)||!isset($schema[$table])||!is_string($action)||!in_array(
 $meta=$schema[$table];
 $owner=null;
 if($isUser){
-    if($table===(string)$identity['table']){http_response_code(403);exit('Tabla protegida');}
-    $owner=OwnershipPolicy::column($meta,(string)$identity['table']);
-    if($owner===null){http_response_code(403);exit('Propiedad no verificable');}
+    try{$owner=OwnedWriteGuard::owner($meta,(string)$identity['table'],$table);}
+    catch(DomainException $e){http_response_code(403);exit('Propiedad no verificable');}
 }
 $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $allowed=array_keys($meta['columns']);
@@ -41,7 +40,7 @@ foreach ($fields as $key=>$value) {
     }
 }
 if($isUser && $action==='add'){
-    $values[$owner]=(string)$identity['id'];
+    $values=OwnedWriteGuard::insertOwner($values,$owner,(string)$identity['id']);
     $expressions[$owner]='?';
 }
 $pk=$meta['pk'];
@@ -55,7 +54,7 @@ if($action!=='add'){
 $where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
 $keyParameters=$action==='add'?[]:array_map(static fn($key)=>$keys[$key],$pk);
 if($isUser&&$action!=='add'){
-    $where.=' AND '.$quote($owner).'=?';
+    $where=OwnedWriteGuard::scopedWhere($pk,$owner);
     $keyParameters[]=(string)$identity['id'];
 }
 try {
