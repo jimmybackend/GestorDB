@@ -37,6 +37,8 @@ jobs:
           php -l schema-keys-process.php
           php -l RelationNavigator.php
           php -l OwnershipPolicy.php
+          php -l OwnedWriteGuard.php
+          php tests/owned-writes.php
           php tests/ownership-policy.php
       - name: Package deployable web installer
         if: github.ref == 'refs/heads/main'
