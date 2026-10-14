@@ -1,0 +1,25 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/OwnedWriteGuard.php';
+$db=new mysqli('127.0.0.1','root','testroot','gestordb_test',3307);
+$db->query('CREATE TABLE IF NOT EXISTS integration_owned (a INT NOT NULL,b INT NOT NULL,owner_id INT NOT NULL,note VARCHAR(50),PRIMARY KEY(a,b))');
+$db->query('TRUNCATE TABLE integration_owned');
+$db->query("INSERT INTO integration_owned(a,b,owner_id,note) VALUES (1,10,42,'first'),(1,20,77,'second')");
+$where=OwnedWriteGuard::scopedWhere(['a','b'],'owner_id');
+$stmt=$db->prepare('UPDATE integration_owned SET note=? WHERE '.$where);
+$note='changed';$a=1;$b=20;$owner=42;
+$stmt->bind_param('siii',$note,$a,$b,$owner);$stmt->execute();
+if($stmt->affected_rows!==0)throw new RuntimeException('Cross-owner write succeeded');
+$stmt->close();
+$stmt=$db->prepare('UPDATE integration_owned SET note=? WHERE '.$where);
+$b=10;$stmt->bind_param('siii',$note,$a,$b,$owner);$stmt->execute();
+if($stmt->affected_rows!==1)throw new RuntimeException('Owner update failed');
+$stmt->close();
+$stmt=$db->prepare('DELETE FROM integration_owned WHERE '.$where);
+$b=20;$stmt->bind_param('iii',$a,$b,$owner);$stmt->execute();
+if($stmt->affected_rows!==0)throw new RuntimeException('Cross-owner delete succeeded');
+$stmt->close();
+$res=$db->query('SELECT note FROM integration_owned WHERE owner_id=77');
+if($res->fetch_column()!=='second')throw new RuntimeException('Other owner data changed');
+$db->query('DROP TABLE integration_owned');
+echo "MySQL isolation checks passed\n";
