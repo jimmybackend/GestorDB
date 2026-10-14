@@ -54,6 +54,10 @@ if($action!=='add'){
 }
 $where=implode(' AND ',array_map(static fn($key)=>$quote($key).'=?',$pk));
 $keyParameters=$action==='add'?[]:array_map(static fn($key)=>$keys[$key],$pk);
+if($isUser&&$action!=='add'){
+    $where.=' AND '.$quote($owner).'=?';
+    $keyParameters[]=(string)$identity['id'];
+}
 try {
     if ($action==='add') {
         if (!$values) throw new RuntimeException('No values supplied');
