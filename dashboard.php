@@ -7,6 +7,7 @@ require_once __DIR__.'/SchemaHierarchy.php';
 require_once __DIR__.'/GestorAccess.php';
 require_once __DIR__.'/RelationNavigator.php';
 require_once __DIR__.'/GestorFieldRenderer.php';
+require_once __DIR__.'/OwnershipPolicy.php';
 $identity=GestorAccess::requireIdentity();
 $schema=(new SchemaHierarchy($db_connection))->inspect();
 if (!isset($_SESSION['gestordb_csrf'])) $_SESSION['gestordb_csrf']=bin2hex(random_bytes(24));
@@ -27,17 +28,17 @@ if(isset($_GET['relation'])){
  try{$relationScope=$navigator->scope($table,$_GET['relation'],$identity);}catch(Throwable $ex){http_response_code(404);exit('Related records unavailable');}
 }
 if (($identity['mode']??'')==='user') {
-    $schema=array_filter($schema,static fn($item)=>GestorAccess::ownerColumn($item,(string)$identity['table'])!==null);
+    $schema=array_filter($schema,static fn($item)=>OwnershipPolicy::column($item,(string)$identity['table'])!==null);
     if($table!==''&&!isset($schema[$table])){http_response_code(403);exit('Tabla no autorizada');}
     $meta=$table!==''?$schema[$table]:null;
-    if($action!=='see'){http_response_code(403);exit('Edición de usuario no habilitada');}
+    if($table===(string)$identity['table']){http_response_code(403);exit('Tabla protegida');}
 }
 if ($meta && $action==='see') {
     try {
         $cols=array_keys($meta['columns']);
         $sql='SELECT * FROM '.$quote($table);
         if(($identity['mode']??'')==='user') {
-            $owner=GestorAccess::ownerColumn($meta,(string)$identity['table']);
+            $owner=OwnershipPolicy::column($meta,(string)$identity['table']);
             $sql.=' WHERE '.$quote($owner).'=? LIMIT 100';
             $stmt=$db_connection->prepare($sql);
             $stmt->bind_param('s',$identity['id']);
