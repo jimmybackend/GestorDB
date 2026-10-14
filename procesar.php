@@ -19,6 +19,12 @@ $action=$_POST['action']??null;
 $fields=$_POST['field']??[];
 if (!is_string($table)||!isset($schema[$table])||!is_string($action)||!in_array($action,['add','edit','delete'],true)||!is_array($fields)) {http_response_code(400);exit('Invalid operation');}
 $meta=$schema[$table];
+$owner=null;
+if($isUser){
+    if($table===(string)$identity['table']){http_response_code(403);exit('Tabla protegida');}
+    $owner=OwnershipPolicy::column($meta,(string)$identity['table']);
+    if($owner===null){http_response_code(403);exit('Propiedad no verificable');}
+}
 $quote=static fn(string $s)=>'`'.str_replace('`','``',$s).'`';
 $allowed=array_keys($meta['columns']);
 $values=[];
