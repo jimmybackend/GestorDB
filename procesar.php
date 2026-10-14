@@ -31,6 +31,7 @@ $values=[];
 $expressions=[];
 foreach ($fields as $key=>$value) {
     if (!is_string($key)||!in_array($key,$allowed,true)||!(is_string($value)||is_array($value))) {http_response_code(400);exit('Invalid field');}
+    if($isUser && $key===$owner)continue;
     if (str_contains(strtolower($meta['columns'][$key]['EXTRA']),'auto_increment'))continue;
     // Omit empty fields rather than overwriting existing values or defaults.
     if ($value!=='' && $value!==[]) {
@@ -38,6 +39,10 @@ foreach ($fields as $key=>$value) {
         $values[$key]=$decoded['value'];
         $expressions[$key]=$decoded['sql'];
     }
+}
+if($isUser && $action==='add'){
+    $values[$owner]=(string)$identity['id'];
+    $expressions[$owner]='?';
 }
 $pk=$meta['pk'];
 $keys=$_POST['pk']??[];
